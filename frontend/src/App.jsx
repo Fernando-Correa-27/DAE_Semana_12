@@ -1,0 +1,273 @@
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { Toaster, toast } from 'react-hot-toast'
+import Header from './components/Header/Header'
+import Footer from './components/Footer/Footer'
+import Hero from './components/Hero/Hero'
+import PremieresSection from './components/PremieresSection/PremieresSection'
+import MovieList from './components/MovieList/MovieList'
+import MovieDetailModal from './components/MovieDetailModal/MovieDetailModal'
+import moviesData from './data/cartelera'
+import useDebounce from './hooks/useDebounce'
+import { STORAGE_KEYS, UI_TEXT } from './utils/constants'
+import { readFavoriteIds, writeFavoriteIds } from './utils/favorites'
+
+import './styles/component-overrides.css'
+
+const SEARCH_DEBOUNCE_MS = 300
+
+function App() {
+  const [theme, setTheme] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEYS.THEME)
+    if (stored) return stored
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  })
+
+  const [favoriteIds, setFavoriteIds] = useState(() =>
+    readFavoriteIds(moviesData.map((movie) => movie.id))
+  )
+  const [searchQuery, setSearchQuery] = useState('')
+  const [genreFilter, setGenreFilter] = useState('')
+  const [selectedMovie, setSelectedMovie] = useState(null)
+  const [detailSection, setDetailSection] = useState('details')
+  const [heroIndex, setHeroIndex] = useState(0)
+  // Derived from the single source of truth; never stored as separate state.
+  const favoritesCount = favoriteIds.length
+  const searchInputRef = useRef(null)
+  // The immediate value controls the input; only the debounced value filters.
+  const debouncedSearch = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS)
+
+  // const list = useMemo(() => moviesData.filter((m) => !m.featured), [])
+
+  // const carouselMovies = useMemo(() => {
+  //   const featuredMovies = moviesData.filter((m) => m.featured)
+  //   if (featuredMovies.length > 0) return featuredMovies
+  //   return moviesData.slice(0, 3)
+  // }, [])
+
+  // antes: const list = useMemo(() => moviesData.filter((m) => !m.featured), [])
+  
+  const list = moviesData
+
+  const carouselMovies = useMemo(
+    () => [...moviesData].sort((a, b) => b.score - a.score).slice(0, 5),
+    []
+  )
+
+  // Genre list
+  const genres = useMemo(() => {
+    const allGenres = moviesData.flatMap((m) => m.genres || [])
+    return [...new Set(allGenres)].sort()
+  }, [])
+
+  // Filtered movies
+  const filteredMovies = useMemo(() => {
+    let filtered = list
+
+    if (debouncedSearch.trim()) {
+      const query = debouncedSearch.toLowerCase()
+      filtered = filtered.filter(
+        (m) =>
+          m.title.toLowerCase().includes(query) ||
+          m.synopsis.toLowerCase().includes(query)
+      )
+    }
+
+    if (genreFilter) {
+      filtered = filtered.filter((m) => (m.genres || []).includes(genreFilter))
+    }
+
+    return filtered
+  }, [list, debouncedSearch, genreFilter])
+
+  // Theme effect
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem(STORAGE_KEYS.THEME, theme)
+  }, [theme])
+
+  // Persist favorites after their lazy initial read
+  useEffect(() => {
+    writeFavoriteIds(favoriteIds)
+  }, [favoriteIds])
+
+  // Detect system preference changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e) => {
+      if (!localStorage.getItem(STORAGE_KEYS.THEME)) {
+        setTheme(e.matches ? 'dark' : 'light')
+      }
+    }
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
+
+  // Carousel auto-rotation
+    useEffect(() => {
+    if (carouselMovies.length <= 1) return
+    const id = setTimeout(
+      () => setHeroIndex((prev) => (prev + 1) % carouselMovies.length),
+      6000
+    )
+    return () => clearTimeout(id)
+  }, [heroIndex, carouselMovies.length])
+
+  // Pause on page hidden
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        document.body.style.setProperty('--carousel-paused', 'true')
+      } else {
+        document.body.style.setProperty('--carousel-paused', 'false')
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
+  // Handlers
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
+  }, [])
+
+  const handleToggleFavorite = useCallback(
+    (movieId) => {
+      const movie = moviesData.find((item) => item.id === movieId)
+      const movieTitle = movie?.title ?? ''
+      const wasFavorite = favoriteIds.includes(movieId)
+
+      setFavoriteIds((prev) =>
+        wasFavorite
+          ? prev.filter((id) => id !== movieId)
+          : [...prev, movieId]
+      )
+
+      if (wasFavorite) {
+        toast(`${UI_TEXT.FAVORITE_REMOVED_TOAST} "${movieTitle}"`, {
+          id: `favorite-${movieId}`,
+          icon: '💔',
+        })
+      } else {
+        toast.success(`${UI_TEXT.FAVORITE_ADDED_TOAST} "${movieTitle}"`, {
+          id: `favorite-${movieId}`,
+        })
+      }
+    },
+    [favoriteIds]
+  )
+
+  const handleClearFilters = useCallback(() => {
+    setSearchQuery('')
+    setGenreFilter('')
+    searchInputRef.current?.focus()
+  }, [])
+
+  const handleSelectMovie = useCallback((movie) => {
+    setSelectedMovie(movie)
+    setDetailSection('details')
+  }, [])
+
+  const handleShowTrailer = useCallback((movie) => {
+    setSelectedMovie(movie)
+    setDetailSection('trailer')
+  }, [])
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedMovie(null)
+  }, [])
+
+  const handleNextSlide = useCallback(() => {
+    setHeroIndex((prev) => (prev + 1) % carouselMovies.length)
+  }, [carouselMovies.length])
+
+  const handlePrevSlide = useCallback(() => {
+    setHeroIndex((prev) =>
+      prev === 0 ? carouselMovies.length - 1 : prev - 1
+    )
+  }, [carouselMovies.length])
+
+  // Touch state for swipe
+  const [touchStart, setTouchStart] = useState(null)
+  const [touchEnd, setTouchEnd] = useState(null)
+
+  const handleTouchStart = useCallback((e) => {
+    setTouchStart(e.touches[0].clientX)
+  }, [])
+
+  const handleTouchMove = useCallback((e) => {
+    setTouchEnd(e.touches[0].clientX)
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    if (!touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const minSwipeDistance = 50
+    if (distance > minSwipeDistance) {
+      handleNextSlide()
+    } else if (distance < -minSwipeDistance) {
+      handlePrevSlide()
+    }
+    setTouchStart(null)
+    setTouchEnd(null)
+  }, [touchStart, touchEnd, handleNextSlide, handlePrevSlide])
+
+  return (
+    <div className="app">
+      <Header
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        favoritesCount={favoritesCount}
+      />
+      <main className="app__main">
+        <Hero
+          movies={carouselMovies}
+          currentIndex={heroIndex}
+          onSelect={handleSelectMovie}
+          onTrailer={handleShowTrailer}
+          onSelectIndex={setHeroIndex}
+          onNext={handleNextSlide}
+          onPrev={handlePrevSlide}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          hasActiveFilters={Boolean(searchQuery || genreFilter)}
+          onClearFilters={handleClearFilters}
+          searchInputRef={searchInputRef}
+        />
+        <PremieresSection />
+        <MovieList
+          movies={filteredMovies}
+          onSelect={handleSelectMovie}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={handleToggleFavorite}
+          activeQuery={debouncedSearch}
+          genres={genres}
+          genreFilter={genreFilter}
+          onGenreChange={setGenreFilter}
+          onClearFilters={handleClearFilters}
+        />
+      </main>
+      <Footer />
+
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 2600,
+          className: 'app-toast',
+        }}
+      />
+
+      {selectedMovie && (
+        <MovieDetailModal
+          movie={selectedMovie}
+          onClose={handleCloseDetail}
+          initialSection={detailSection}
+        />
+      )}
+    </div>
+  )
+}
+
+export default App
