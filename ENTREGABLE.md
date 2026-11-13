@@ -3,7 +3,8 @@
 **Alumno:** Michael Montgomery Rosell  
 **Curso:** Desarrollo de Aplicaciones Empresariales  
 **Laboratorio:** GLAB-S12 — Servicios Web  
-**Título del desarrollo:** Integración de una API REST de Django con una aplicación React mediante Axios
+**Título del desarrollo:** Integración de una API REST de Django con una aplicación React mediante Axios  
+**Repositorio:** https://github.com/Fernando-Correa-27/DAE_Semana_12
 
 ---
 

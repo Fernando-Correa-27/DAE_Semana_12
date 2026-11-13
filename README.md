@@ -1,5 +1,7 @@
 # DAE S12 — Servicios Web
 
+**Repositorio:** https://github.com/Fernando-Correa-27/DAE_Semana_12
+
 Integración de la API REST de cuestionarios del **laboratorio 8** (Django + Django REST Framework) con la aplicación React de la **cartelera de cine** del laboratorio 11. El resultado es un único repositorio con dos lados: `backend/` y `frontend/`.
 
 La sección nueva consume el recurso **exámenes** desde React con Axios: listar, crear y eliminar, con estados de carga, datos y error, validación por campo y paginación. La cartelera de cine se conserva; solo se amplió el menú de navegación.
