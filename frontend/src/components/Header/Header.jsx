@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types'
+import { Link } from 'react-router-dom'
 import Button from '../Button/Button'
 import { UI_TEXT } from '../../utils/constants'
 
@@ -6,49 +7,54 @@ import { UI_TEXT } from '../../utils/constants'
  * Site header with brand, primary navigation, favorites counter and theme
  * switch. It receives only the derived favorites count, never the full list.
  */
-function Header({ theme, onToggleTheme, favoritesCount = 0 }) {
+function Header({ theme, onToggleTheme, favoritesCount = 0, showFavorites = true }) {
   const themeLabel = theme === 'dark' ? UI_TEXT.THEME_TO_LIGHT : UI_TEXT.THEME_TO_DARK
 
   return (
     <header className="header">
       <div className="header__container">
-        <div className="header__brand">
+        <Link to="/" className="header__brand">
           <span className="header__logo" aria-hidden="true">
             &#9654;
           </span>
           <h1 className="header__title">{UI_TEXT.APP_TITLE}</h1>
-        </div>
+        </Link>
 
         <nav className="header__nav" aria-label={UI_TEXT.NAV_LABEL}>
-          <a href="#featured" className="header__link">
+          <Link to="/#featured" className="header__link">
             {UI_TEXT.NAV_FEATURED}
-          </a>
-          <a href="#movies" className="header__link">
+          </Link>
+          <Link to="/#movies" className="header__link">
             {UI_TEXT.NAV_MOVIES}
-          </a>
-          <a href="#footer" className="header__link">
+          </Link>
+          <Link to="/#footer" className="header__link">
             {UI_TEXT.NAV_CONTACT}
-          </a>
+          </Link>
+          <Link to="/exams" className="header__link header__link--exams">
+            {UI_TEXT.NAV_EXAMS}
+          </Link>
         </nav>
 
         <div className="header__actions">
-          <span
-            className="header__favorites"
-            role="status"
-            aria-live="polite"
-            title={`${UI_TEXT.FAVORITES_COUNT_LABEL}: ${favoritesCount}`}
-          >
-            <svg className="header__favorites-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                fill="currentColor"
-              />
-            </svg>
-            <span className="sr-only">{`${UI_TEXT.FAVORITES_COUNT_LABEL}: ${favoritesCount}`}</span>
-            <span className="header__favorites-count" aria-hidden="true">
-              {favoritesCount}
+          {showFavorites && (
+            <span
+              className="header__favorites"
+              role="status"
+              aria-live="polite"
+              title={`${UI_TEXT.FAVORITES_COUNT_LABEL}: ${favoritesCount}`}
+            >
+              <svg className="header__favorites-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span className="sr-only">{`${UI_TEXT.FAVORITES_COUNT_LABEL}: ${favoritesCount}`}</span>
+              <span className="header__favorites-count" aria-hidden="true">
+                {favoritesCount}
+              </span>
             </span>
-          </span>
+          )}
 
           <Button
             variant="ghost"
@@ -78,6 +84,7 @@ Header.propTypes = {
   theme: PropTypes.oneOf(['dark', 'light']),
   onToggleTheme: PropTypes.func,
   favoritesCount: PropTypes.number,
+  showFavorites: PropTypes.bool,
 }
 
 export default Header

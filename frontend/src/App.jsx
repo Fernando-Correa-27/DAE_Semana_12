@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
 import Header from './components/Header/Header'
 import Footer from './components/Footer/Footer'
@@ -8,7 +9,8 @@ import MovieList from './components/MovieList/MovieList'
 import MovieDetailModal from './components/MovieDetailModal/MovieDetailModal'
 import moviesData from './data/cartelera'
 import useDebounce from './hooks/useDebounce'
-import { STORAGE_KEYS, UI_TEXT } from './utils/constants'
+import useTheme from './hooks/useTheme'
+import { UI_TEXT } from './utils/constants'
 import { readFavoriteIds, writeFavoriteIds } from './utils/favorites'
 
 import './styles/component-overrides.css'
@@ -16,11 +18,8 @@ import './styles/component-overrides.css'
 const SEARCH_DEBOUNCE_MS = 300
 
 function App() {
-  const [theme, setTheme] = useState(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.THEME)
-    if (stored) return stored
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
+  const location = useLocation()
+  const { theme, toggleTheme } = useTheme()
 
   const [favoriteIds, setFavoriteIds] = useState(() =>
     readFavoriteIds(moviesData.map((movie) => movie.id))
@@ -79,28 +78,22 @@ function App() {
     return filtered
   }, [list, debouncedSearch, genreFilter])
 
-  // Theme effect
+  // Scroll to the section named in the hash (shared navigation).
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem(STORAGE_KEYS.THEME, theme)
-  }, [theme])
+    const targetId = location.hash.replace('#', '')
+    if (!targetId) return
+
+    const target = document.getElementById(targetId)
+    if (!target) return
+
+    const frame = requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [location.hash])
 
   // Persist favorites after their lazy initial read
   useEffect(() => {
     writeFavoriteIds(favoriteIds)
   }, [favoriteIds])
-
-  // Detect system preference changes
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e) => {
-      if (!localStorage.getItem(STORAGE_KEYS.THEME)) {
-        setTheme(e.matches ? 'dark' : 'light')
-      }
-    }
-    mediaQuery.addEventListener('change', handler)
-    return () => mediaQuery.removeEventListener('change', handler)
-  }, [])
 
   // Carousel auto-rotation
     useEffect(() => {
@@ -126,10 +119,6 @@ function App() {
   }, [])
 
   // Handlers
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
-  }, [])
-
   const handleToggleFavorite = useCallback(
     (movieId) => {
       const movie = moviesData.find((item) => item.id === movieId)
